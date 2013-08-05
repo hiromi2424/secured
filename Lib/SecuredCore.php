@@ -1,5 +1,6 @@
 <?php
 
+App::uses('Hash', 'Utility');
 
 class SecuredCore {
 
@@ -51,7 +52,7 @@ class SecuredCore {
 		foreach (array('secured', 'allowed', 'prefixes') as $var) {
 			$value = isset($config[$var]) ? (array)$config[$var] : array();
 			if ($options['merge']) {
-				$value = Set::merge(self::$$var, $value);
+				$value = Hash::merge(self::$$var, $value);
 			}
 			self::$$var = $value;
 		}
@@ -76,14 +77,7 @@ class SecuredCore {
 	 */
 
 	public static function allowed($params) {
-		if (array_key_exists($params['controller'], self::$allowed)) {
-			$actions = (array)self::$allowed[$params['controller']];
-			if ($actions === array('*')) {
-				return true;
-			}
-			return (in_array($params['action'], $actions));
-		}
-		return false;
+		return static::_judge($params, self::$allowed);
 	}
 
 	/**
@@ -93,24 +87,35 @@ class SecuredCore {
 	 * @param array $params Parameters containing 'controller' and 'action'
 	 * @return boolean True if request should be ssl'ed, false otherwise.
 	 */
-	public function ssled($params) {
+	public static function ssled($params) {
 		//Prefix Specific Check - allow securing of entire admin in one swoop
 		if( !empty(self::$prefixes) &&  !empty($params['prefix']) && (in_array($params['prefix'], (array)self::$prefixes)) ) {
 			return true;
 		}
 
-		if (!array_key_exists($params['controller'], self::$secured)) {
-			return false;
-		}
-		$actions = (array)self::$secured[$params['controller']];
-
-		if ($actions === array('*')) {
-			return true;
-		}
-		return (in_array($params['action'], $actions));
+		return static::_judge($params, self::$secured);
 	}
 
-	public function url($url, $full = false) {
+	/**
+	 * Helper function to judge the request parameter is in specified actions
+	 * or not. Both controller and action can be '*' as wildcard.
+	 *
+	 * @param array $params Parameters containing 'controller' and 'action'
+	 * @param array $config configured actions
+	 * @return boolean True if request should be ssl'ed, false otherwise.
+	 */
+	protected static function _judge($params, $config) {
+		foreach (Hash::normalize($config) as $controller => $actions) {
+			if ($controller === $params['controller'] || $controller === '*') {
+				if ($actions === null || in_array($params['action'], (array)$actions, true) || (array)$actions === array('*')) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	public static function url($url, $full = false) {
 		if (is_string($url) && preg_match('#(^https?:)?//#', $url)) {
 			return $url;
 		}

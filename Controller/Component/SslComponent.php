@@ -38,11 +38,25 @@ class SslComponent extends Component {
 	 */
 	public $autoRedirect = true;
 
-	public function initialize($controller) {
-		SecuredCore::init($this->settings);
+	/**
+	 * Holder of controller.
+	 *
+	 * @var Controller
+	 */
+	public $controller;
+
+	public function __construct(ComponentCollection $collection, $settings = array()) {
+		if (empty($settings)) {
+			$settings = array('secured' => '*');
+		}
+		parent::__construct($collection, $settings);
 	}
 
-	public function startup($controller) {
+	public function initialize(Controller $controller) {
+		SecuredCore::init($this->settings, $this->settings);
+	}
+
+	public function startup(Controller $controller) {
 		$this->controller = $controller;
 
 		if ($controller->name === 'CakeError') {
